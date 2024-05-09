@@ -1,21 +1,22 @@
 package io.paymentgateway.paymentmodule;
 
 import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.request.*;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.DynamicAccountResponse;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.StaticAccountResponse;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.TransactionPaymentNotificationResponse;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.TransactionQueryResponse;
-import io.paymentgateway.paymentmodule.exceptions.PaymentServiceException;
+import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.*;
 import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.service.interfaces.PaymentService;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.io.IOException;
+import java.util.Base64;
 
+import static io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.service.impl.PaymentServiceImpl.hashValue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 
@@ -23,15 +24,21 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 public class CoralPayDirectMoneyTransferTest {
 
+    WebTestClient testClient = WebTestClient
+            .bindToServer()
+            .baseUrl("")
+            .build();
+
+    private FetchPartnerTransactionResponse fetchPartnerTransactionResponse;
+    private FetchAccountTransactionResponse fetchAccountTransactionResponse;
+
     @Autowired
     private PaymentService paymentService;
+    private String username = "b@b.com";
 
-    @Value("${CORALPAY.USERNAME}")
-    private String username;
+    //    @Value("${CORALPAY.PASSWORD}")
+    private String password = "3bedf945c074b5d1cbe2b555f0c0cbc2f6c40505dcf2205b9d221edf4c0f98e33316f68f9a0f5227dfc4850aa3bacbf96c1f002f1abf58343ddf98a1852871c3";
 
-    TransactionQueryRequest queryRequest;
-    @Value("${CORALPAY.PASSWORD}")
-    private String password;
     @BeforeEach
     void SetUp() {
 
@@ -82,7 +89,7 @@ public class CoralPayDirectMoneyTransferTest {
     requestHeader.setClientId("b@b.com");
     requestHeader.setRequestType("Bank Transfer");
 
-        TransactionQueryRequest queryRequest = new TransactionQueryRequest();
+    TransactionQueryRequest queryRequest = new TransactionQueryRequest();
     queryRequest.setRequestHeader(requestHeader);
     queryRequest.setReferenceNumber("abc1409432072");
 
@@ -152,5 +159,72 @@ public class CoralPayDirectMoneyTransferTest {
 
     }
 
+    @Test
+    void checkCoralPayDynamicAccountByCode() {
+
+      DynamicAccountByCodeRequest dynamicAccountByCodeRequest = new DynamicAccountByCodeRequest();
+
+      DynamicAccountByCodeRequestHeader byrequestHeader = new DynamicAccountByCodeRequestHeader();
+      byrequestHeader.setClientId("b@b.com");
+      byrequestHeader.setRequestType("Bank Transfer");
+
+      dynamicAccountByCodeRequest.setBankCode("058");
+      dynamicAccountByCodeRequest.setCustomerName("James AY");
+      dynamicAccountByCodeRequest.setRequestHeader(byrequestHeader);
+      dynamicAccountByCodeRequest.setTransactionAmount("7000");
+      dynamicAccountByCodeRequest.setReferenceNumber("49122280223047");
+
+        DynamicAccountByCodeResponse codeResponse = paymentService.generateDynamicAccountByCode(dynamicAccountByCodeRequest);
+        log.info(codeResponse.toString());
+        assertNotNull(codeResponse);
+        assertNotEquals("78e1ea45-c353-4ef9-99f8-64b42868bb6b",codeResponse.getOperationReference());
+
+    }
+
+    @Test
+    public void testFetchPartnerTransaction() {
+
+        String credentials = username + ":" + password;
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes());
+
+        testClient.get().uri("http://sandbox1.coralpay.com:8080/paywithtransfer/moneytransfer/apis/partners/fetch-partner-transactions?clientId=p@p.com&fromDate=2023-06-03&toDate=2023-06-05")
+                .header(HttpHeaders.AUTHORIZATION, "Basic "+"cEBwLmNvbToxMjM0")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(fetchPartnerTransactionResponse -> assertThat(fetchPartnerTransactionResponse.getResponseBody()).isNotNull());
+    }
+
+    @Test
+    public void testFetchAccountTransaction() {
+        String password = hashValue( "9925204416", "reign@co");
+        String credentials = username + ":" + password;
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes());
+    String author = "b21pbmliaXpnIyNxUCVTVVchZUVNVmhBS15EKG5rY1hHVzpmYTRkZTE3ZjA3YTRmMjNlZWFjOTJmYmM1NTNiOTNiNTExMjgyYTk3NWFkMTQ1MTZhMWY3Njc4MTBjNDY2Y2QwNmRmN2NmOWFkOWEyNzU3Njk5OTEzOTQ1YzJmN2MwN2UyZTI4Y2VlOWUxYzBlZWQzODUyYzk0YjIzMTZkZTNmMg==";
+
+    assertThat(base64Credentials).isEqualTo(author);
+    log.info(base64Credentials);
+    log.info(author);
+        testClient.get().uri("http://sandbox1.coralpay.com:8080/paywithtransfer/moneytransfer/apis/partners/getAccountTransactions?accountNumber=9925204416&fromDate=2023-06-03&toDate=2023-07-17")
+                .header(HttpHeaders.AUTHORIZATION, "Basic "+base64Credentials)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(response -> assertThat(response.getResponseBody()).isNotNull());
+    }
+
+    @Test
+    public void testGetAllBankList() {
+
+        String credentials = username + ":" + password;
+        String base64Credentials = Base64.getEncoder().encodeToString(credentials.getBytes());
+
+        testClient.get().uri("http://sandbox1.coralpay.com:8080/paywithtransfer/moneytransfer/apis/listOfBanks")
+                .header(HttpHeaders.AUTHORIZATION, "Basic "+"YkBiLmNvbToxMjM0")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(fetchPartnerTransactionResponse -> assertThat(fetchPartnerTransactionResponse.getResponseBody()).isNotNull());
+    }
 
 }

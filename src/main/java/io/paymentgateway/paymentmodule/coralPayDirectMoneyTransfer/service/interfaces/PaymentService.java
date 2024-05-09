@@ -1,15 +1,10 @@
 package io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.service.interfaces;
 
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.request.DynamicAccountRequest;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.request.StaticAccountRequest;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.request.TransactionPaymentNotificationRequest;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.request.TransactionQueryRequest;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.DynamicAccountResponse;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.StaticAccountResponse;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.TransactionPaymentNotificationResponse;
-import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.TransactionQueryResponse;
+import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.request.*;
+import io.paymentgateway.paymentmodule.coralPayDirectMoneyTransfer.DTO.response.*;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface PaymentService {
 
@@ -23,4 +18,9 @@ public interface PaymentService {
 
    TransactionPaymentNotificationResponse testPartnerRequest(TransactionPaymentNotificationRequest notificationRequest);
 
+   DynamicAccountByCodeResponse generateDynamicAccountByCode(DynamicAccountByCodeRequest request);
+
+   FetchAccountTransactionResponse fetchAccount(FetchAccountTransactionRequest transactionRequest);
+
+   List<FetchEachPartnerTransaction> fetchPartner();
 }
